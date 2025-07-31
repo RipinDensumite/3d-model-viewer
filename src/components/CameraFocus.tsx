@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useThree } from '@react-three/fiber'
-import { Vector3, Box3 } from 'three'
+import { Vector3, Box3,PerspectiveCamera } from 'three'
 
 type PredefinedView = {
   position: Vector3
@@ -37,8 +37,14 @@ const CameraFocus = ({ target, predefinedView, modelBounds, autoFitOnLoad = fals
         const maxDim = Math.max(size.x, size.y, size.z)
         
         // Calculate distance needed to fit the model
-        const fov = camera.fov * (Math.PI / 180) // Convert to radians
-        const distance = maxDim / (2 * Math.tan(fov / 2)) * 1.5 // 1.5 for padding
+        let distance: number
+        if (camera instanceof PerspectiveCamera) {
+          const fov = camera.fov * (Math.PI / 180) // Convert to radians
+          distance = maxDim / (2 * Math.tan(fov / 2)) * 1.5 // 1.5 for padding
+        } else {
+          // For orthographic camera, use a simpler distance calculation
+          distance = maxDim * 2
+        }
         
         // Calculate camera position based on predefined view direction
         const direction = predefinedView.position.clone().normalize()
@@ -72,8 +78,14 @@ const CameraFocus = ({ target, predefinedView, modelBounds, autoFitOnLoad = fals
       const size = modelBounds.getSize(new Vector3())
       const maxDim = Math.max(size.x, size.y, size.z)
       
-      const fov = camera.fov * (Math.PI / 180)
-      const distance = maxDim / (2 * Math.tan(fov / 2)) * 1.5
+      let distance: number
+      if (camera instanceof PerspectiveCamera) {
+        const fov = camera.fov * (Math.PI / 180)
+        distance = maxDim / (2 * Math.tan(fov / 2)) * 1.5
+      } else {
+        // For orthographic camera, use a simpler distance calculation
+        distance = maxDim * 2
+      }
       
       // Use overview direction
       const direction = new Vector3(1, 1, 1).normalize()

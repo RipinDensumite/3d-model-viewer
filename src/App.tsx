@@ -108,7 +108,6 @@ function App() {
   }
 
   const handlePredefinedView = (viewKey: keyof typeof PREDEFINED_VIEWS) => {
-    const view = PREDEFINED_VIEWS[viewKey]
     setFocusPosition(null) // Clear focus position to use predefined view
     setCurrentView(viewKey)
     setSelectedPart(null)
