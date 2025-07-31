@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import ModelViewer from './components/ModelViewer'
-import { Vector3 } from 'three'
+import { Vector3, Box3 } from 'three'
 
 // Define predefined camera positions and part descriptions
 const PREDEFINED_VIEWS = {
@@ -45,6 +45,8 @@ function App() {
   const [availableObjects, setAvailableObjects] = useState<string[]>([])
   const [modelUrl, setModelUrl] = useState('/model.glb')
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
+  const [modelBounds, setModelBounds] = useState<Box3 | null>(null)
+  const [isFirstLoad, setIsFirstLoad] = useState(true)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = () => {
@@ -69,6 +71,7 @@ function App() {
         setAvailableObjects([])
         setCurrentView('overview')
         setActiveTab('views')
+        setIsFirstLoad(true) // Enable auto-fit for new model
         
         // Clean up previous object URL if it exists
         if (modelUrl.startsWith('blob:')) {
@@ -86,21 +89,26 @@ function App() {
     setCurrentView('custom')
   }
 
-  const handlePredefinedView = (viewKey: keyof typeof PREDEFINED_VIEWS) => {
-    const view = PREDEFINED_VIEWS[viewKey]
-    setFocusPosition(view.target)
-    setCurrentView(viewKey)
-    setSelectedPart(null) // Clear selected part when switching to predefined view
-  }
-
   const handleObjectSelect = (objectName: string) => {
     setSelectedPart(objectName)
     // Note: We don't have the position here, so we'll just select it without focusing
     // The actual focusing will happen when the user clicks on the object in the 3D view
   }
 
-  const handleModelLoaded = (objects: string[]) => {
+  const handleModelLoaded = (objects: string[], bounds: Box3) => {
     setAvailableObjects(objects)
+    setModelBounds(bounds)
+    setTimeout(() => {
+      setIsFirstLoad(false)
+    }, 100)
+  }
+
+  const handlePredefinedView = (viewKey: keyof typeof PREDEFINED_VIEWS) => {
+    const view = PREDEFINED_VIEWS[viewKey]
+    setFocusPosition(null) // Clear focus position to use predefined view
+    setCurrentView(viewKey)
+    setSelectedPart(null)
+    setIsFirstLoad(false) // Disable auto-fit for manual view changes
   }
 
   return (
@@ -132,6 +140,8 @@ function App() {
         focusPosition={focusPosition}
         predefinedView={currentView !== 'custom' ? PREDEFINED_VIEWS[currentView as keyof typeof PREDEFINED_VIEWS] : null}
         onModelLoaded={handleModelLoaded}
+        modelBounds={modelBounds}
+        autoFitOnLoad={isFirstLoad}
       />
 
       {/* Camera View Controls and Object List */}

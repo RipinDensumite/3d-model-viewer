@@ -1,6 +1,6 @@
 import { useGLTF, OrbitControls, Sky, Environment } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
-import { Vector3 } from 'three'
+import { Vector3, Box3 } from 'three'
 import { Suspense, useEffect } from 'react'
 import CameraFocus from './CameraFocus'
 
@@ -12,7 +12,7 @@ type PredefinedView = {
 
 interface ModelInterface {
   onSelectPart: (name: string, position: Vector3) => void
-  onModelLoaded?: (objects: string[]) => void
+  onModelLoaded?: (objects: string[], bounds: Box3) => void
   modelUrl?: string
 }
 
@@ -20,16 +20,18 @@ type Props = {
   onSelectPart: (name: string, position: Vector3) => void
   focusPosition?: Vector3 | null
   predefinedView?: PredefinedView | null
-  onModelLoaded?: (objects: string[]) => void
+  onModelLoaded?: (objects: string[], bounds: Box3) => void
   modelUrl?: string
+  modelBounds?: Box3 | null
+  autoFitOnLoad?: boolean
 }
 
 const Model = ({ 
   onSelectPart, 
   onModelLoaded,
-  modelUrl = '/model.glb' // Default model URL, can be overridden
+  modelUrl = '/model.glb'
 }: ModelInterface) => {  
-  const gltf = useGLTF(modelUrl) // place model.glb in public/
+  const gltf = useGLTF(modelUrl)
   
   useEffect(() => {
     if (gltf.scene && onModelLoaded) {
@@ -42,9 +44,12 @@ const Model = ({
         }
       })
       
+      // Calculate bounding box
+      const bounds = new Box3().setFromObject(gltf.scene)
+      
       // Remove duplicates and sort alphabetically
       const uniqueObjectNames = [...new Set(objectNames)].sort()
-      onModelLoaded(uniqueObjectNames)
+      onModelLoaded(uniqueObjectNames, bounds)
     }
   }, [gltf.scene, onModelLoaded, modelUrl])
   
@@ -61,7 +66,15 @@ const Model = ({
   )
 }
 
-const ModelViewer = ({ onSelectPart, focusPosition, predefinedView, onModelLoaded, modelUrl }: Props) => {
+const ModelViewer = ({ 
+  onSelectPart, 
+  focusPosition, 
+  predefinedView, 
+  onModelLoaded, 
+  modelUrl, 
+  modelBounds, 
+  autoFitOnLoad = false 
+}: Props) => {
   return (
     <Canvas 
       camera={{ position: [5, 5, 5], fov: 50 }}
@@ -123,12 +136,12 @@ const ModelViewer = ({ onSelectPart, focusPosition, predefinedView, onModelLoade
         enableDamping={true}
       />
       
-      {(focusPosition || predefinedView) && (
-        <CameraFocus 
-          target={focusPosition || null} 
-          predefinedView={predefinedView}
-        />
-      )}
+      <CameraFocus 
+        target={focusPosition || null} 
+        predefinedView={predefinedView}
+        modelBounds={modelBounds}
+        autoFitOnLoad={autoFitOnLoad}
+      />
     </Canvas>
   )
 }
