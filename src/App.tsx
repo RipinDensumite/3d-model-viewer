@@ -47,6 +47,8 @@ function App() {
   const [selectedFileName, setSelectedFileName] = useState<string | null>(null)
   const [modelBounds, setModelBounds] = useState<Box3 | null>(null)
   const [isFirstLoad, setIsFirstLoad] = useState(true)
+  const [showControls, setShowControls] = useState(false)
+  const [showPartInfo, setShowPartInfo] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   const handleFileSelect = () => {
@@ -87,10 +89,12 @@ function App() {
     setSelectedPart(name)
     setFocusPosition(position)
     setCurrentView('custom')
+    setShowPartInfo(true) // Auto-show part info on mobile when part is selected
   }
 
   const handleObjectSelect = (objectName: string) => {
     setSelectedPart(objectName)
+    setShowControls(false) // Hide controls on mobile after selection
     // Note: We don't have the position here, so we'll just select it without focusing
     // The actual focusing will happen when the user clicks on the object in the 3D view
   }
@@ -109,6 +113,7 @@ function App() {
     setCurrentView(viewKey)
     setSelectedPart(null)
     setIsFirstLoad(false) // Disable auto-fit for manual view changes
+    setShowControls(false) // Hide controls on mobile after selection
   }
 
   return (
@@ -116,13 +121,14 @@ function App() {
     <div className='bg-green-50 text-black flex items-center gap-2 p-2'>
       <button 
         onClick={handleFileSelect}
-        className='bg-amber-200 px-5 py-1 rounded hover:bg-amber-300 transition-colors cursor-pointer border-none'
+        className='bg-amber-200 px-3 md:px-5 py-1 rounded hover:bg-amber-300 transition-colors cursor-pointer border-none text-sm md:text-base'
       >
         File
       </button>
       {selectedFileName && (
-        <span className='text-sm text-gray-600'>
-          Current: {selectedFileName} | {modelUrl}
+        <span className='text-xs md:text-sm text-gray-600 truncate'>
+          <span className="hidden md:inline">Current: </span>
+          {selectedFileName}
         </span>
       )}
       <input
@@ -144,23 +150,38 @@ function App() {
         autoFitOnLoad={isFirstLoad}
       />
 
+      {/* Mobile Control Button */}
+      <button
+        onClick={() => setShowControls(!showControls)}
+        className="md:hidden absolute top-3 left-3 bg-black/70 text-white p-2 rounded-lg border-none cursor-pointer z-10"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M3 12h18m-9-9v18"/>
+        </svg>
+      </button>
+
       {/* Camera View Controls and Object List */}
-      <div className="absolute top-5 left-5 bg-black/70 text-white rounded-lg min-w-[250px] max-h-[70vh] overflow-hidden flex flex-col">
+      <div className={`
+        absolute bg-black/70 text-white rounded-lg overflow-hidden flex flex-col transition-all duration-300
+        md:top-5 md:left-5 md:min-w-[250px] md:max-h-[70vh] md:translate-x-0 md:translate-y-0
+        ${showControls ? 'top-14 left-3 right-3 max-h-[60vh] translate-x-0' : 'top-14 left-3 right-3 max-h-0 -translate-y-full md:translate-y-0'}
+        md:max-h-[70vh] md:right-auto md:w-auto
+      `}>
         {/* Tab Headers */}
         <div className="flex border-b border-gray-600">
           <button
             onClick={() => setActiveTab('views')}
-            className={`flex-1 px-4 py-3 text-sm font-medium border-none cursor-pointer ${
+            className={`flex-1 px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium border-none cursor-pointer ${
               activeTab === 'views' 
                 ? 'bg-blue-600 text-white' 
                 : 'bg-transparent text-gray-300 hover:bg-gray-700'
             }`}
           >
-            Camera Views
+            Views
           </button>
           <button
             onClick={() => setActiveTab('objects')}
-            className={`flex-1 px-4 py-3 text-sm font-medium border-none cursor-pointer ${
+            className={`flex-1 px-3 md:px-4 py-2 md:py-3 text-xs md:text-sm font-medium border-none cursor-pointer ${
               activeTab === 'objects' 
                 ? 'bg-blue-600 text-white' 
                 : 'bg-transparent text-gray-300 hover:bg-gray-700'
@@ -171,15 +192,15 @@ function App() {
         </div>
 
         {/* Tab Content */}
-        <div className="p-4 overflow-y-auto flex-1">
+        <div className="p-3 md:p-4 overflow-y-auto flex-1">
           {activeTab === 'views' && (
             <>
-              <h3 className="m-0 mb-4">Camera Views</h3>
+              <h3 className="m-0 mb-3 md:mb-4 text-sm md:text-base">Camera Views</h3>
               {Object.entries(PREDEFINED_VIEWS).map(([key, view]) => (
                 <button
                   key={key}
                   onClick={() => handlePredefinedView(key as keyof typeof PREDEFINED_VIEWS)}
-                  className={`block w-full my-2 px-3 py-2 text-white border-none rounded cursor-pointer transition-colors ${
+                  className={`block w-full my-1 md:my-2 px-3 py-2 text-xs md:text-sm text-white border-none rounded cursor-pointer transition-colors ${
                     currentView === key ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'
                   }`}
                 >
@@ -191,16 +212,16 @@ function App() {
 
           {activeTab === 'objects' && (
             <>
-              <h3 className="m-0 mb-4">Available Objects</h3>
+              <h3 className="m-0 mb-3 md:mb-4 text-sm md:text-base">Available Objects</h3>
               {availableObjects.length === 0 ? (
-                <p className="text-gray-400 italic text-sm">Loading objects...</p>
+                <p className="text-gray-400 italic text-xs md:text-sm">Loading objects...</p>
               ) : (
                 <div className="space-y-1">
                   {availableObjects.map((objectName) => (
                     <button
                       key={objectName}
                       onClick={() => handleObjectSelect(objectName)}
-                      className={`block w-full text-left px-3 py-2 text-sm border-none rounded cursor-pointer transition-colors ${
+                      className={`block w-full text-left px-3 py-2 text-xs md:text-sm border-none rounded cursor-pointer transition-colors ${
                         selectedPart === objectName 
                           ? 'bg-blue-600 text-white' 
                           : 'bg-gray-800 hover:bg-gray-700 text-gray-200'
@@ -217,18 +238,37 @@ function App() {
         </div>
       </div>
 
+      {/* Mobile Part Info Button */}
+      {selectedPart && (
+        <button
+          onClick={() => setShowPartInfo(!showPartInfo)}
+          className="md:hidden absolute top-3 right-3 bg-black/70 text-white p-2 rounded-lg border-none cursor-pointer z-10"
+        >
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <circle cx="12" cy="12" r="10"/>
+            <path d="M12 16v-4"/>
+            <path d="M12 8h.01"/>
+          </svg>
+        </button>
+      )}
+
       {/* Selected Part Info */}
-      <div className="absolute top-5 right-5 bg-black/70 text-white p-4 rounded-lg max-w-[300px]">
-        <h3 className="m-0 mb-4">Part Information</h3>
+      <div className={`
+        absolute bg-black/70 text-white rounded-lg transition-all duration-300
+        md:top-5 md:right-5 md:max-w-[300px] md:translate-x-0 md:translate-y-0 md:p-4
+        ${showPartInfo ? 'bottom-3 left-3 right-3 max-h-[40vh] translate-x-0 p-3' : 'bottom-3 left-3 right-3 max-h-0 translate-y-full md:translate-y-0 p-0 md:p-4'}
+        md:max-h-none md:bottom-auto md:left-auto
+      `}>
+        <h3 className="m-0 mb-3 md:mb-4 text-sm md:text-base">Part Information</h3>
         {selectedPart ? (
           <>
-            <h4 className="m-0 mb-2 text-sky-300">{selectedPart}</h4>
-            <p className="m-0 leading-relaxed">
+            <h4 className="m-0 mb-2 text-sky-300 text-sm md:text-base">{selectedPart}</h4>
+            <p className="m-0 leading-relaxed text-xs md:text-sm overflow-y-auto max-h-[20vh] md:max-h-none">
               {PART_DESCRIPTIONS[selectedPart] || 'No description available for this part.'}
             </p>
           </>
         ) : (
-          <p className="m-0 italic">
+          <p className="m-0 italic text-xs md:text-sm">
             Click on a part of the model to view its information.
           </p>
         )}
