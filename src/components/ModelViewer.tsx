@@ -1,7 +1,7 @@
 import { useGLTF, OrbitControls, Sky, Environment } from '@react-three/drei'
 import { Canvas } from '@react-three/fiber'
-import { Vector3, Box3 } from 'three'
-import { Suspense, useEffect } from 'react'
+import { Vector3, Box3, Mesh, Material, MeshStandardMaterial } from 'three'
+import { Suspense, useEffect, useRef } from 'react'
 import CameraFocus from './CameraFocus'
 
 type PredefinedView = {
@@ -14,6 +14,7 @@ interface ModelInterface {
   onSelectPart: (name: string, position: Vector3) => void
   onModelLoaded?: (objects: string[], bounds: Box3) => void
   modelUrl?: string
+  selectedPart?: string | null
 }
 
 type Props = {
@@ -24,23 +25,38 @@ type Props = {
   modelUrl?: string
   modelBounds?: Box3 | null
   autoFitOnLoad?: boolean
+  selectedPart?: string | null
 }
 
 const Model = ({ 
   onSelectPart, 
   onModelLoaded,
-  modelUrl = '/model.glb'
+  modelUrl = '/model.glb',
+  selectedPart
 }: ModelInterface) => {  
   const gltf = useGLTF(modelUrl)
+  const originalMaterials = useRef<Map<Mesh, Material | Material[]>>(new Map())
+  const highlightMaterial = useRef<MeshStandardMaterial>(new MeshStandardMaterial({
+    color: '#ffff00',
+    emissive: '#ffaa00',
+    emissiveIntensity: 0.3,
+    transparent: true,
+    opacity: 0.8
+  }))
   
   useEffect(() => {
     if (gltf.scene && onModelLoaded) {
-      // Extract all object names from the scene
+      // Extract all object names from the scene and store original materials
       const objectNames: string[] = []
       
       gltf.scene.traverse((child) => {
         if (child.name && child.name !== '' && child.type === 'Mesh') {
           objectNames.push(child.name)
+          // Store original material
+          const mesh = child as Mesh
+          if (!originalMaterials.current.has(mesh)) {
+            originalMaterials.current.set(mesh, mesh.material)
+          }
         }
       })
       
@@ -52,6 +68,26 @@ const Model = ({
       onModelLoaded(uniqueObjectNames, bounds)
     }
   }, [gltf.scene, onModelLoaded, modelUrl])
+
+  // Handle highlighting
+  useEffect(() => {
+    if (gltf.scene) {
+      gltf.scene.traverse((child) => {
+        if (child.type === 'Mesh') {
+          const mesh = child as Mesh
+          const originalMaterial = originalMaterials.current.get(mesh)
+          
+          if (selectedPart && child.name === selectedPart) {
+            // Highlight selected part
+            mesh.material = highlightMaterial.current
+          } else if (originalMaterial) {
+            // Restore original material
+            mesh.material = originalMaterial
+          }
+        }
+      })
+    }
+  }, [gltf.scene, selectedPart])
   
   return (
     <primitive
@@ -73,14 +109,15 @@ const ModelViewer = ({
   onModelLoaded, 
   modelUrl, 
   modelBounds, 
-  autoFitOnLoad = false 
+  autoFitOnLoad = false,
+  selectedPart
 }: Props) => {
   return (
     <Canvas 
       camera={{ position: [5, 5, 5], fov: 50 }}
       gl={{ antialias: true, alpha: false }}
     >
-      {/* Earth-like Sky */}
+      {/* ...existing code... */}
       <Sky
         distance={450000}
         sunPosition={[100, 20, 100]}
@@ -92,10 +129,8 @@ const ModelViewer = ({
         turbidity={2}
       />
       
-      {/* Environment for realistic reflections */}
       <Environment preset="city" />
       
-      {/* Earth-like lighting */}
       <ambientLight intensity={0.3} color="#87CEEB" />
       <directionalLight 
         position={[100, 20, 100]} 
@@ -110,13 +145,11 @@ const ModelViewer = ({
         shadow-camera-bottom={-50}
       />
       
-      {/* Additional fill light to simulate atmospheric scattering */}
       <hemisphereLight 
         groundColor="#F5DEB3" 
         intensity={0.4} 
       />
       
-      {/* Rim light for atmospheric effect */}
       <directionalLight 
         position={[-50, 10, -50]} 
         intensity={0.5}
@@ -124,7 +157,12 @@ const ModelViewer = ({
       />
       
       <Suspense fallback={null}>
-        <Model onSelectPart={onSelectPart} onModelLoaded={onModelLoaded} modelUrl={modelUrl}/>
+        <Model 
+          onSelectPart={onSelectPart} 
+          onModelLoaded={onModelLoaded} 
+          modelUrl={modelUrl}
+          selectedPart={selectedPart}
+        />
       </Suspense>
       
       <OrbitControls 
